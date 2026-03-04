@@ -17,6 +17,10 @@ def main():
 
 
 def repet(filename):
+    # ============================
+    # Stage 1
+    # ============================
+
     # get signal x
     x, sr = load_file(filename)
 
@@ -34,6 +38,70 @@ def repet(filename):
     b = self_similarity(B)
 
     p = find_repeating_period(b)
+
+    # ============================
+    # Stage 2
+    # ============================
+
+    S = find_repeating_segment(V, p)
+
+    # ============================
+    # Stage 3
+    # ============================
+
+    W = repeating_spectrogram(V, S, p)
+
+    M = frequency_mask(W, V)
+
+    X_background = M * X
+    X_foreground = (1 - M) * X
+
+    make_output_files(X_background, X_foreground, filename, sr)
+
+
+def make_output_files(X_background, X_foreground, filename, sr):
+    background = librosa.istft(X_background)
+    foreground = librosa.istft(X_foreground)
+
+    sf.write(f"{filename}_background.wav", background, sr)
+    sf.write(f"{filename}_foreground.wav", foreground, sr)
+
+
+def frequency_mask(W, V):
+    eps = np.finfo(float).eps
+
+    M = W / (V + eps)
+
+    M = np.clip(M, 0, 1)
+
+    return M
+
+
+def repeating_spectrogram(V, S, p):
+    _, num_frames = V.shape
+
+    num_repeats = int(np.ceil(num_frames / p))
+
+    S_full = np.tile(S, (1, num_repeats))
+
+    S_full = S_full[:, :num_frames]
+
+    W = np.minimum(V, S_full)
+
+    return W
+
+
+def find_repeating_segment(V, p):
+    num_bins, num_frames = V.shape
+
+    num_segments = int(np.floor(num_frames / p))
+
+    V_truncated = V[:, : num_segments * p]
+
+    V_reshaped = V_truncated.reshape(num_bins, num_segments, p)
+
+    S = np.median(V_reshaped, axis=1)
+    return S
 
 
 def find_repeating_period(b):
