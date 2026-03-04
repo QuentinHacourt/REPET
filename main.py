@@ -26,6 +26,13 @@ def repet(filename):
     # get the magnitude spectrogram V
     V = np.abs(X)
 
+    # power spectrogram is just the element-wise square of V
+    V2 = V**2
+
+    B = autocorrelation(V2)
+
+    b = self_similarity(B)
+
 
 def load_file(filename):
     if file_exists(filename):
@@ -41,6 +48,32 @@ def load_file(filename):
     else:
         print(f"ERROR: there is no file called: {filename}")
         sys.exit(1)
+
+
+def autocorrelation(matrix):
+    num_bins, num_frames = matrix.shape
+    B = np.zeros(matrix.shape)
+    m = num_frames
+
+    for i in range(num_bins):
+        for j in range(num_frames):
+            overlap_count = m - j
+            sum_val = np.sum(matrix[i, :overlap_count] * matrix[i, j:])
+            B[i, j] = sum_val / overlap_count
+
+    return B
+
+
+def self_similarity(matrix):
+    n, m = matrix.shape
+    b = np.zeros(m)
+
+    for j in range(m):
+        sum_val = 0
+        for i in range(n):
+            sum_val += matrix[i, j]
+
+        b[j] = sum_val / n
 
 
 # takes an audio signal and returns the result of its short time fourier transform
