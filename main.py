@@ -33,6 +33,41 @@ def repet(filename):
 
     b = self_similarity(B)
 
+    p = find_repeating_period(b)
+
+
+def find_repeating_period(b):
+    l = int(len(b) * 0.75)
+    delta = 2
+    J_len = int(l / 3)
+    J = np.zeros(J_len)
+
+    for j in range(1, J_len):
+        Delta = int(np.floor(3 * j / 4))
+        I = 0
+
+        count = 0
+
+        for i in range(j, l, j):
+            start = max(0, i - Delta)
+            end = min(l, i + Delta + 1)
+            neighborhood = b[start:end]
+            local_start = max(0, i - delta)
+            local_end = min(l, i + delta)
+
+            h = start + np.argmax(neighborhood)
+
+            if local_start <= h <= local_end:
+                I += b[h] - np.mean(neighborhood)
+
+            count += 1
+
+        if count > 0:
+            J[j] = I / count
+
+    p = np.argmax(J)
+    return p
+
 
 def load_file(filename):
     if file_exists(filename):
@@ -51,29 +86,33 @@ def load_file(filename):
 
 
 def autocorrelation(matrix):
+    # num_bins, num_frames = matrix.shape
+    # B = np.zeros(matrix.shape)
+    # m = num_frames
+
+    # for i in range(num_bins):
+    #     for j in range(num_frames):
+    #         overlap_count = m - j
+    #         sum_val = np.sum(matrix[i, :overlap_count] * matrix[i, j:])
+    #         B[i, j] = sum_val / overlap_count
     num_bins, num_frames = matrix.shape
     B = np.zeros(matrix.shape)
-    m = num_frames
 
-    for i in range(num_bins):
-        for j in range(num_frames):
-            overlap_count = m - j
-            sum_val = np.sum(matrix[i, :overlap_count] * matrix[i, j:])
-            B[i, j] = sum_val / overlap_count
+    for j in range(num_frames):
+        overlap_count = num_frames - j
+
+        sum_over_time = np.sum(matrix[:, :overlap_count] * matrix[:, j:], axis=1)
+
+        B[:, j] = sum_over_time / overlap_count
 
     return B
 
 
 def self_similarity(matrix):
-    n, m = matrix.shape
-    b = np.zeros(m)
+    b = np.mean(matrix, axis=0)
 
-    for j in range(m):
-        sum_val = 0
-        for i in range(n):
-            sum_val += matrix[i, j]
-
-        b[j] = sum_val / n
+    b = b / b[0]
+    return b
 
 
 # takes an audio signal and returns the result of its short time fourier transform
